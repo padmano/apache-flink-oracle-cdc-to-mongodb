@@ -1,0 +1,68 @@
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    networks:
+      source-network:
+  oracle:
+    image: goodboy008/oracle-19.3.0-ee:non-cdb
+    container_name: oracle
+    ports:
+      - "1521:1521"
+    networks:
+      sink-network:
+  jobmanager:
+    image: flink:1.17
+    container_name: jobmanager
+    networks:
+      flink_network:
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        metrics.reporters: prom
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9091
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    volumes:
+      - ./jars/flink-sql-connector-mongodb-1.1.0-1.17.jar:/opt/flink/lib/flink-sql-connector-mongodb-1.1.0-1.17.jar
+      - ./jars/flink-connector-mongodb-1.1.0-1.17.jar:/opt/flink/lib/flink-connector-mongodb-1.1.0-1.17.jar
+      - ./jars/bson-5.0.1.jar:/opt/flink/lib/bson.jar
+      - ./jars/mongodb-driver-sync-5.0.1.jar:/opt/flink/lib/mongodb-driver-sync-5.0.1.jar
+      - ./jars/mongodb-driver-core-5.0.1.jar:/opt/flink/lib/mongodb-driver-core-5.0.1.jar
+      - ./jars/flink-sql-connector-oracle-cdc-3.2.1.jar:/opt/flink/lib/flink-sql-connector-oracle-cdc-3.2.1.jar
+      - ./jars/ojdbc8-19.3.0.0.jar:/opt/flink/lib/ojdbc8-19.3.0.0.jar
+  taskmanager:
+    image: flink:1.17
+    command: taskmanager
+    networks:
+      flink_network:
+    depends_on:
+      - jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: jobmanager
+        metrics.reporters: prom
+        metrics.reporter.prom.factory.class: org.apache.flink.metrics.prometheus.PrometheusReporterFactory
+        metrics.reporter.prom.port: 9091
+
+    volumes:
+      - ./jars/flink-sql-connector-oracle-cdc-3.2.1.jar:/opt/flink/lib/flink-sql-connector-oracle-cdc-3.2.1.jar
+      - ./jars/flink-sql-connector-mongodb-1.1.0-1.17.jar:/opt/flink/lib/flink-sql-connector-mongodb-1.1.0-1.17.jar
+      - ./jars/flink-connector-mongodb-1.1.0-1.17.jar:/opt/flink/lib/flink-connector-mongodb-1.1.0-1.17.jar
+      - ./jars/bson-5.0.1.jar:/opt/flink/lib/bson.jar
+      - ./jars/mongodb-driver-sync-5.0.1.jar:/opt/flink/lib/mongodb-driver-sync-5.0.1.jar
+      - ./jars/mongodb-driver-core-5.0.1.jar:/opt/flink/lib/mongodb-driver-core-5.0.1.jar
+      - ./jars/ojdbc8-19.3.0.0.jar:/opt/flink/lib/ojdbc8-19.3.0.0.jar
+
+    deploy:
+      replicas: 2
+networks:
+  source-network:
+  sink-network:
+  flink_network:
